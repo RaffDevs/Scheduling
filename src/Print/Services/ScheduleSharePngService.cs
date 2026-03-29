@@ -74,7 +74,7 @@ public class ScheduleSharePngService
 
     private static Font GetFont(float size, FontStyle style)
     {
-        foreach (var name in new[] { "Aptos", "Segoe UI", "Arial", "Helvetica", "DejaVu Sans" })
+        foreach (var name in new[] { "DejaVu Sans", "Arial", "Helvetica", "Segoe UI", "Aptos" })
         {
             if (SystemFonts.TryGet(name, out var family))
             {
@@ -82,7 +82,12 @@ public class ScheduleSharePngService
             }
         }
 
-        return SystemFonts.Collection.Families.First().CreateFont(size, style);
+        if (SystemFonts.Collection.Families.Any())
+        {
+            return SystemFonts.Collection.Families.First().CreateFont(size, style);
+        }
+
+        throw new InvalidOperationException("Nao foi possivel gerar a imagem porque o servidor nao encontrou nenhuma fonte.");
     }
 
     private static void DrawCenteredText(IImageProcessingContext context, string text, Font font, Color color, float x, float y)
