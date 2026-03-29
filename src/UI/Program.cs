@@ -5,8 +5,15 @@ using MudBlazor.Services;
 using Scheduling.Infrastructure;
 using Scheduling.Print.Services;
 using Microsoft.AspNetCore.HttpOverrides;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var sqliteDataDirectory = builder.Environment.IsDevelopment()
+    ? builder.Environment.ContentRootPath
+    : "/app/data";
+
+Directory.CreateDirectory(sqliteDataDirectory);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
