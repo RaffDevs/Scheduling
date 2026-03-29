@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+**/.DS_Store
+**/*.user
+**/*.suo
+**/*.db-shm
+**/*.db-wal
+.git
+.gitignore

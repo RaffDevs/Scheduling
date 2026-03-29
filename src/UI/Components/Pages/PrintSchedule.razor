@@ -1,0 +1,58 @@
+﻿@page "/escala/{ScheduleId:int}/imprimir"
+
+@inject global::Scheduling.Application.Services.PersonService PersonService
+@inject global::Scheduling.Application.Services.ScheduleService ScheduleService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Impressão</PageTitle>
+
+@if (_schedule is not null)
+{
+    <global::Scheduling.Print.Pages.MonthlySchedulePrintPage Month="@_schedule.Month"
+                                                             Year="@_schedule.Year"
+                                                             Entries="@_entries"
+                                                             People="@_people" />
+}
+else
+{
+    <MudPaper Class="pa-6 no-print">
+        <MudText Typo="Typo.body1">Escala não encontrada.</MudText>
+    </MudPaper>
+}
+
+@code {
+    [Parameter]
+    public int ScheduleId { get; set; }
+
+    private global::Scheduling.Domain.Entities.Schedule? _schedule;
+    private List<global::Scheduling.Domain.Entities.ScheduleEntry> _entries = [];
+    private List<global::Scheduling.Domain.Entities.Person> _people = [];
+    private bool _printRequested;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _schedule = await ScheduleService.GetByIdAsync(ScheduleId);
+        _printRequested = false;
+
+        if (_schedule is null)
+        {
+            _entries = [];
+            _people = [];
+            return;
+        }
+
+        _entries = await ScheduleService.GetEntriesAsync(_schedule.Id);
+        _people = await PersonService.GetAllAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_schedule is null || _printRequested)
+        {
+            return;
+        }
+
+        _printRequested = true;
+        await JSRuntime.InvokeVoidAsync("print");
+    }
+}

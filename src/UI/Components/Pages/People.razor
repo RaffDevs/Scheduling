@@ -1,0 +1,213 @@
+@page "/pessoas"
+
+@inject global::Scheduling.Application.Services.PersonService PersonService
+
+<PageTitle>Pessoas</PageTitle>
+
+<MudStack Spacing="3">
+    <MudPaper Class="pa-6">
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.h4">Pessoas</MudText>
+
+            @if (!string.IsNullOrWhiteSpace(_message))
+            {
+                <MudAlert Severity="@_messageSeverity" Dense="true" Variant="Variant.Filled">
+                    @_message
+                </MudAlert>
+            }
+
+            @if (!_showForm)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Large"
+                           FullWidth="true"
+                           OnClick="StartCreate">
+                    Adicionar pessoa
+                </MudButton>
+            }
+            else
+            {
+                <MudTextField @bind-Value="_name"
+                              Label="Nome"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              FullWidth="true"
+                              Immediate="true" />
+
+                <MudSwitch @bind-Value="_isActive" Color="Color.Primary">
+                    Ativa
+                </MudSwitch>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Large"
+                           FullWidth="true"
+                           OnClick="SaveAsync">
+                    Salvar
+                </MudButton>
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           Size="Size.Large"
+                           FullWidth="true"
+                           OnClick="Cancel">
+                    Cancelar
+                </MudButton>
+            }
+        </MudStack>
+    </MudPaper>
+
+    <MudPaper Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Lista de pessoas (@_people.Count)</MudText>
+
+        @if (_people.Count == 0)
+        {
+            <MudText Typo="Typo.body1">Nenhuma pessoa cadastrada.</MudText>
+        }
+        else
+        {
+            <MudStack Spacing="2">
+                @foreach (var person in _people)
+                {
+                    <MudPaper Class="pa-4" Outlined="true">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.body1">@person.Name</MudText>
+                            <MudText Typo="Typo.body2">
+                                @(person.IsActive ? "Ativa" : "Inativa")
+                            </MudText>
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Size="Size.Large"
+                                       FullWidth="true"
+                                       OnClick="() => StartEdit(person)">
+                                Editar
+                            </MudButton>
+
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Error"
+                                       Size="Size.Large"
+                                       FullWidth="true"
+                                       OnClick="() => DeleteAsync(person.Id, person.Name)">
+                                Excluir
+                            </MudButton>
+                        </MudStack>
+                    </MudPaper>
+                }
+            </MudStack>
+        }
+    </MudPaper>
+</MudStack>
+
+@code {
+    private readonly List<global::Scheduling.Domain.Entities.Person> _people = [];
+    private string _name = string.Empty;
+    private string _message = string.Empty;
+    private bool _showForm;
+    private bool _isActive = true;
+    private int? _editingPersonId;
+    private Severity _messageSeverity = Severity.Success;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPeopleAsync();
+    }
+
+    private void StartCreate()
+    {
+        _editingPersonId = null;
+        _name = string.Empty;
+        _isActive = true;
+        _showForm = true;
+        _message = string.Empty;
+        _messageSeverity = Severity.Success;
+    }
+
+    private void StartEdit(global::Scheduling.Domain.Entities.Person person)
+    {
+        _editingPersonId = person.Id;
+        _name = person.Name;
+        _isActive = person.IsActive;
+        _showForm = true;
+        _message = string.Empty;
+        _messageSeverity = Severity.Success;
+    }
+
+    private void Cancel()
+    {
+        _editingPersonId = null;
+        _name = string.Empty;
+        _isActive = true;
+        _showForm = false;
+        _message = string.Empty;
+        _messageSeverity = Severity.Success;
+    }
+
+    private async Task SaveAsync()
+    {
+        var name = _name.Trim();
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            _message = "Digite o nome.";
+            _messageSeverity = Severity.Warning;
+            return;
+        }
+
+        if (_editingPersonId.HasValue)
+        {
+            var updated = await PersonService.UpdateAsync(_editingPersonId.Value, name, _isActive);
+
+            if (!updated)
+            {
+                _message = "Não foi possível salvar.";
+                _messageSeverity = Severity.Error;
+                return;
+            }
+
+            _message = $"Pessoa atualizada: {name}";
+        }
+        else
+        {
+            await PersonService.CreateAsync(name, _isActive);
+            _message = $"Pessoa salva: {name}";
+        }
+
+        _messageSeverity = Severity.Success;
+        _editingPersonId = null;
+        _name = string.Empty;
+        _isActive = true;
+        _showForm = false;
+
+        await LoadPeopleAsync();
+    }
+
+    private async Task DeleteAsync(int id, string name)
+    {
+        var deleted = await PersonService.DeleteAsync(id);
+
+        if (!deleted.Success)
+        {
+            _message = deleted.Message;
+            _messageSeverity = Severity.Warning;
+            return;
+        }
+
+        _message = deleted.Message;
+        _messageSeverity = Severity.Success;
+
+        if (_editingPersonId == id)
+        {
+            Cancel();
+        }
+
+        await LoadPeopleAsync();
+    }
+
+    private async Task LoadPeopleAsync()
+    {
+        _people.Clear();
+        _people.AddRange(await PersonService.GetAllAsync());
+    }
+}

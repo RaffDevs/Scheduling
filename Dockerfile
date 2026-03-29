@@ -1,0 +1,27 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY Scheduling.sln ./
+COPY src/Domain/Scheduling.Domain.csproj src/Domain/
+COPY src/Application/Scheduling.Application.csproj src/Application/
+COPY src/Infrastructure/Scheduling.Infrastructure.csproj src/Infrastructure/
+COPY src/Scheduling/Scheduling.Scheduling.csproj src/Scheduling/
+COPY src/Print/Scheduling.Print.csproj src/Print/
+COPY src/UI/Scheduling.UI.csproj src/UI/
+
+RUN dotnet restore src/UI/Scheduling.UI.csproj
+
+COPY . .
+RUN dotnet publish src/UI/Scheduling.UI.csproj -c Release -o /app/publish /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+WORKDIR /app
+
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_HTTP_PORTS=8080
+
+COPY --from=build /app/publish .
+
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "Scheduling.UI.dll"]

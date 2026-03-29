@@ -1,0 +1,76 @@
+﻿@using System.Globalization
+
+<PageTitle>Impressão da escala</PageTitle>
+
+<div class="print-page">
+    <header class="print-header">
+        <h1>Escala de Introdutores</h1>
+        <p>@GetMonthYearText()</p>
+    </header>
+
+    @if (DisplayItems.Count == 0)
+    {
+        <section class="print-empty">
+            <p>Nenhuma escala disponível para impressão.</p>
+        </section>
+    }
+    else
+    {
+        <section class="print-list">
+            @foreach (var item in DisplayItems)
+            {
+                <div class="print-row">
+                    <div class="print-date">@item.DateText</div>
+                    <div class="print-person">@item.PersonName</div>
+                </div>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int Month { get; set; }
+
+    [Parameter]
+    public int Year { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<ScheduleEntry> Entries { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<Person> People { get; set; } = [];
+
+    private List<PrintItem> DisplayItems =>
+        Entries
+            .OrderBy(x => x.Date)
+            .Select(x => new PrintItem
+            {
+                DateText = x.Date.ToString("dddd, dd/MM", new CultureInfo("pt-BR")),
+                PersonName = GetPersonName(x.PersonId)
+            })
+            .ToList();
+
+    private string GetMonthYearText()
+    {
+        if (Month < 1 || Month > 12 || Year <= 0)
+        {
+            return string.Empty;
+        }
+
+        var date = new DateTime(Year, Month, 1);
+        return date.ToString("MMMM 'de' yyyy", new CultureInfo("pt-BR"));
+    }
+
+    private string GetPersonName(int personId)
+    {
+        return People.FirstOrDefault(x => x.Id == personId)?.Name ?? "-";
+    }
+
+    private class PrintItem
+    {
+        public string DateText { get; set; } = string.Empty;
+
+        public string PersonName { get; set; } = string.Empty;
+    }
+}

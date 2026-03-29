@@ -1,0 +1,83 @@
+﻿@page "/gerar-escala"
+
+@inject global::Scheduling.Application.Services.ScheduleService ScheduleService
+@inject global::Scheduling.Application.Services.PersonService PersonService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Gerar escala</PageTitle>
+
+<MudStack Spacing="3">
+    <MudPaper Class="pa-6">
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.h4">Gerar escala</MudText>
+
+            @if (!string.IsNullOrWhiteSpace(_message))
+            {
+                <MudAlert Severity="@_messageSeverity" Dense="true" Variant="Variant.Filled">
+                    @_message
+                </MudAlert>
+            }
+
+            <MudNumericField T="int"
+                             @bind-Value="_month"
+                             Label="Mês"
+                             Min="1"
+                             Max="12"
+                             Variant="Variant.Outlined"
+                             FullWidth="true" />
+
+            <MudNumericField T="int"
+                             @bind-Value="_year"
+                             Label="Ano"
+                             Min="2024"
+                             Max="2100"
+                             Variant="Variant.Outlined"
+                             FullWidth="true" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Large"
+                       FullWidth="true"
+                       OnClick="GenerateAsync">
+                Gerar escala
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+</MudStack>
+
+@code {
+    private int _month = DateTime.Today.Month;
+    private int _year = DateTime.Today.Year;
+    private string _message = string.Empty;
+    private Severity _messageSeverity = Severity.Success;
+
+    private async Task GenerateAsync()
+    {
+        _message = string.Empty;
+
+        var activePeople = await PersonService.GetActiveAsync();
+
+        if (activePeople.Count == 0)
+        {
+            _message = "Cadastre pelo menos uma pessoa ativa.";
+            _messageSeverity = Severity.Warning;
+            return;
+        }
+
+        try
+        {
+            var schedule = await ScheduleService.GenerateMonthlyScheduleAsync(_month, _year);
+            NavigationManager.NavigateTo($"/escala/{schedule.Id}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _message = ex.Message;
+            _messageSeverity = Severity.Warning;
+        }
+        catch (Exception)
+        {
+            _message = "Não foi possível gerar a escala.";
+            _messageSeverity = Severity.Error;
+        }
+    }
+}

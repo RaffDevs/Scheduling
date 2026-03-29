@@ -1,0 +1,28 @@
+﻿@page "/"
+
+<PageTitle>Início</PageTitle>
+
+<MudStack Spacing="3">
+    <MudPaper Class="pa-6">
+        <MudText Typo="Typo.h4" GutterBottom="true">Escala de Introdutores</MudText>
+        <MudText Typo="Typo.body1">
+            Siga estes passos para usar o sistema.
+        </MudText>
+    </MudPaper>
+
+    <MudPaper Class="pa-4">
+        <MudStack Spacing="2">
+            <MudButton Href="/pessoas" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true">
+                1. Pessoas
+            </MudButton>
+
+            <MudButton Href="/gerar-escala" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true">
+                2. Gerar escala
+            </MudButton>
+
+            <MudButton Href="/escala" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true">
+                3. Ver escala
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+</MudStack>

@@ -1,0 +1,84 @@
+:root {
+    --page-background: #f6f1e8;
+    --surface: #fffdf9;
+    --text-main: #2b231a;
+}
+
+html,
+body {
+    margin: 0;
+    min-height: 100%;
+    font-family: "Aptos", "Trebuchet MS", "Segoe UI", sans-serif;
+    background: linear-gradient(180deg, #fbf8f3 0%, var(--page-background) 100%);
+    color: var(--text-main);
+}
+
+a {
+    color: inherit;
+}
+
+h1:focus {
+    outline: none;
+}
+
+.mud-main-content {
+    min-height: calc(100vh - 64px);
+}
+
+.app-title {
+    font-weight: 700;
+}
+
+.page-container {
+    padding-top: 24px;
+    padding-bottom: 24px;
+}
+
+.mud-paper {
+    background-color: var(--surface);
+}
+
+.share-preview {
+    overflow-x: auto;
+    text-align: center;
+}
+
+.share-image {
+    width: 100%;
+    max-width: 540px;
+    height: auto;
+}
+
+.no-print {
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .app-title {
+        font-size: 1.05rem;
+    }
+
+    .page-container {
+        padding: 16px;
+    }
+
+    .mud-button {
+        min-height: 52px;
+    }
+
+    .mud-input-control {
+        width: 100%;
+    }
+}
+
+@media print {
+    .no-print,
+    .mud-appbar,
+    .mud-drawer {
+        display: none !important;
+    }
+
+    .mud-main-content {
+        min-height: auto;
+    }
+}

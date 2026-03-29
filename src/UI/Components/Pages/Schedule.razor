@@ -1,0 +1,270 @@
+@page "/escala"
+@page "/escala/{ScheduleId:int}"
+
+@using System.Globalization
+@inject global::Scheduling.Application.Services.PersonService PersonService
+@inject global::Scheduling.Application.Services.ScheduleService ScheduleService
+@inject global::Scheduling.Application.Services.SwapService SwapService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Escala</PageTitle>
+
+<MudStack Spacing="3">
+    <MudPaper Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Escalas cadastradas</MudText>
+
+        @if (_allSchedules.Count == 0)
+        {
+            <MudText Typo="Typo.body1">Nenhuma escala cadastrada.</MudText>
+        }
+        else
+        {
+            <MudStack Spacing="2">
+                @foreach (var item in _allSchedules)
+                {
+                    <MudButton Variant="@(item.Id == _schedule?.Id ? Variant.Filled : Variant.Outlined)"
+                               Color="Color.Primary"
+                               Size="Size.Large"
+                               FullWidth="true"
+                               OnClick="() => OpenSchedule(item.Id)">
+                        @item.Label
+                    </MudButton>
+                }
+            </MudStack>
+        }
+    </MudPaper>
+
+    <MudPaper Class="pa-6">
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.h4">Escala</MudText>
+
+            @if (_schedule is not null)
+            {
+                <MudText Typo="Typo.body1">@GetMonthYearText()</MudText>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_message))
+            {
+                <MudAlert Severity="@_messageSeverity" Dense="true" Variant="Variant.Filled">
+                    @_message
+                </MudAlert>
+            }
+        </MudStack>
+    </MudPaper>
+
+    @if (_schedule is null)
+    {
+        <MudPaper Class="pa-6">
+            <MudText Typo="Typo.body1" Class="mb-4">Nenhuma escala foi gerada ainda.</MudText>
+            <MudButton Href="/gerar-escala" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true">
+                Gerar escala
+            </MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-4">
+            <MudStack Spacing="2">
+                @foreach (var item in _items)
+                {
+                    <MudPaper Class="pa-4" Outlined="true">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.h6">@item.DateText</MudText>
+                            <MudText Typo="Typo.body1">Pessoa: @item.PersonName</MudText>
+
+                            <MudSelect T="int" Label="Trocar por" Value="@item.NewPersonId" ValueChanged="value => item.NewPersonId = value" Variant="Variant.Outlined" FullWidth="true">
+                                @foreach (var person in _activePeople)
+                                {
+                                    <MudSelectItem T="int" Value="@person.Id">@person.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Size="Size.Large"
+                                       FullWidth="true"
+                                       OnClick="() => SwapAsync(item)">
+                                Trocar
+                            </MudButton>
+                        </MudStack>
+                    </MudPaper>
+                }
+            </MudStack>
+        </MudPaper>
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   Size="Size.Large"
+                   FullWidth="true"
+                   OnClick="OpenPrintPage">
+            Imprimir escala
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Size="Size.Large"
+                   FullWidth="true"
+                   OnClick="OpenShareImagePage">
+            Gerar imagem
+        </MudButton>
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Error"
+                   Size="Size.Large"
+                   FullWidth="true"
+                   OnClick="DeleteScheduleAsync">
+            Excluir escala
+        </MudButton>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public int? ScheduleId { get; set; }
+
+    private global::Scheduling.Domain.Entities.Schedule? _schedule;
+    private List<global::Scheduling.Domain.Entities.Person> _activePeople = [];
+    private List<ScheduleListItem> _allSchedules = [];
+    private List<ScheduleItem> _items = [];
+    private string _message = string.Empty;
+    private Severity _messageSeverity = Severity.Success;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _message = string.Empty;
+        _activePeople = await PersonService.GetActiveAsync();
+        _allSchedules = (await ScheduleService.GetAllAsync())
+            .Select(x => new ScheduleListItem
+            {
+                Id = x.Id,
+                Label = new DateTime(x.Year, x.Month, 1).ToString("MMMM 'de' yyyy", new CultureInfo("pt-BR"))
+            })
+            .ToList();
+
+        _schedule = ScheduleId.HasValue
+            ? await ScheduleService.GetByIdAsync(ScheduleId.Value)
+            : await ScheduleService.GetLatestAsync();
+
+        _items.Clear();
+
+        if (_schedule is null)
+        {
+            return;
+        }
+
+        var entries = await ScheduleService.GetEntriesAsync(_schedule.Id);
+
+        _items = entries
+            .OrderBy(x => x.Date)
+            .Select(x => new ScheduleItem
+            {
+                ScheduleEntryId = x.Id,
+                DateText = x.Date.ToString("dddd, dd/MM", new CultureInfo("pt-BR")),
+                PersonName = _activePeople.FirstOrDefault(person => person.Id == x.PersonId)?.Name ?? "Pessoa não encontrada",
+                NewPersonId = x.PersonId
+            })
+            .ToList();
+    }
+
+    private async Task SwapAsync(ScheduleItem item)
+    {
+        if (item.NewPersonId <= 0)
+        {
+            _message = "Escolha uma pessoa.";
+            _messageSeverity = Severity.Warning;
+            return;
+        }
+
+        var success = await SwapService.SwapPersonAsync(item.ScheduleEntryId, item.NewPersonId);
+
+        if (!success)
+        {
+            _message = "Não foi possível trocar a pessoa.";
+            _messageSeverity = Severity.Error;
+            return;
+        }
+
+        _message = "Troca salva.";
+        _messageSeverity = Severity.Success;
+
+        await LoadAsync();
+    }
+
+    private async Task DeleteScheduleAsync()
+    {
+        if (_schedule is null)
+        {
+            return;
+        }
+
+        var deleted = await ScheduleService.DeleteAsync(_schedule.Id);
+
+        if (!deleted)
+        {
+            _message = "Não foi possível excluir a escala.";
+            _messageSeverity = Severity.Error;
+            return;
+        }
+
+        NavigationManager.NavigateTo("/escala", forceLoad: true);
+    }
+
+    private void OpenSchedule(int id)
+    {
+        NavigationManager.NavigateTo($"/escala/{id}");
+    }
+
+    private void OpenPrintPage()
+    {
+        if (_schedule is null)
+        {
+            return;
+        }
+
+        NavigationManager.NavigateTo($"/escala/{_schedule.Id}/imprimir", forceLoad: true);
+    }
+
+    private void OpenShareImagePage()
+    {
+        if (_schedule is null)
+        {
+            return;
+        }
+
+        NavigationManager.NavigateTo($"/escala/{_schedule.Id}/imagem");
+    }
+
+    private string GetMonthYearText()
+    {
+        if (_schedule is null)
+        {
+            return string.Empty;
+        }
+
+        var date = new DateTime(_schedule.Year, _schedule.Month, 1);
+        return date.ToString("MMMM 'de' yyyy", new CultureInfo("pt-BR"));
+    }
+
+    private class ScheduleItem
+    {
+        public int ScheduleEntryId { get; set; }
+
+        public string DateText { get; set; } = string.Empty;
+
+        public string PersonName { get; set; } = string.Empty;
+
+        public int NewPersonId { get; set; }
+    }
+
+    private class ScheduleListItem
+    {
+        public int Id { get; set; }
+
+        public string Label { get; set; } = string.Empty;
+    }
+}

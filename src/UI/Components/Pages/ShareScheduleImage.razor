@@ -1,0 +1,80 @@
+@page "/escala/{ScheduleId:int}/imagem"
+
+@inject global::Scheduling.Application.Services.ScheduleService ScheduleService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Imagem da escala</PageTitle>
+
+<MudStack Spacing="3">
+    <MudPaper Class="pa-6 no-print">
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.h4">Imagem da escala</MudText>
+            <MudText Typo="Typo.body1">
+                Use esta imagem para compartilhar no WhatsApp.
+            </MudText>
+        </MudStack>
+    </MudPaper>
+
+    @if (_schedule is null)
+    {
+        <MudPaper Class="pa-6 no-print">
+            <MudText Typo="Typo.body1">Escala não encontrada.</MudText>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-4 share-preview no-print">
+            <img class="share-image"
+                 src="@_previewUrl"
+                 alt="Previa da escala para compartilhar" />
+        </MudPaper>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Size="Size.Large"
+                   FullWidth="true"
+                   Class="no-print"
+                   Href="@_downloadUrl"
+                   HtmlTag="a">
+            Baixar imagem
+        </MudButton>
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Default"
+                   Size="Size.Large"
+                   FullWidth="true"
+                   Class="no-print"
+                   OnClick="GoBack">
+            Voltar para escala
+        </MudButton>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public int ScheduleId { get; set; }
+
+    private global::Scheduling.Domain.Entities.Schedule? _schedule;
+    private string _previewUrl = string.Empty;
+    private string _downloadUrl = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _schedule = await ScheduleService.GetByIdAsync(ScheduleId);
+
+        if (_schedule is null)
+        {
+            _previewUrl = string.Empty;
+            _downloadUrl = string.Empty;
+            return;
+        }
+
+        _previewUrl = $"/escala/{_schedule.Id}/imagem/preview";
+        _downloadUrl = $"/escala/{_schedule.Id}/imagem/preview?download=true";
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo($"/escala/{ScheduleId}");
+    }
+}
